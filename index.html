@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dispatcher Sejasa - Form Pengajuan Izin</title>
+
+  <!-- ===== PWA: bisa di-"Add to Home Screen" ===== -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#8A0057">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dispatcher Sejasa">
+  <link rel="icon" href="icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <base target="_top">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <style>
+    :root {
+      --magenta-700: #8A0057;
+      --magenta-600: #C2007A;
+      --magenta-500: #E0158F;
+      --magenta-100: #FDE7F2;
+      --magenta-50: #FFF6FA;
+      --ink-900: #22151D;
+      --ink-600: #7A6570;
+      --line: #F0DDE7;
+      --white: #FFFFFF;
+      --danger: #E2483D;
+      --danger-tint: #FDEAE8;
+    }
+    * { box-sizing: border-box; }
+    button:focus-visible, .tab-btn:focus-visible, a:focus-visible {
+      outline: 2px solid var(--magenta-500);
+      outline-offset: 2px;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(180deg, var(--magenta-50) 0%, #fff 320px);
+      margin: 0;
+      padding: 0 16px 40px;
+      color: var(--ink-900);
+    }
+
+    /* ---------- SPLASH SCREEN ---------- */
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--magenta-700) 0%, var(--magenta-500) 100%);
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    #splash.hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .splash-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      animation: splashRise 0.55s cubic-bezier(.2,.8,.2,1);
+    }
+    .splash-mark {
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      background: #fff;
+      position: relative;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.22);
+      animation: splashPulse 1.6s ease-in-out infinite;
+    }
+    .splash-mark::after {
+      content: '';
+      position: absolute;
+      top: 18px; left: 18px;
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700));
+    }
+    .splash-word {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+    .splash-word span { color: #FFD1EC; }
+    .splash-dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .splash-dots span {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.85);
+      animation: splashDot 1s ease-in-out infinite;
+    }
+    .splash-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .splash-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes splashRise {
+      from { opacity: 0; transform: translateY(14px) scale(0.92); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes splashPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.07); }
+    }
+    @keyframes splashDot {
+      0%, 80%, 100% { opacity: 0.35; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-4px); }
+    }
+
+    .topband {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 28px 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700));
+      position: relative;
+      flex-shrink: 0;
+    }
+    .mark::after {
+      content: '';
+      position: absolute;
+      top: 9px; left: 9px;
+      width: 16px; height: 16px;
+      border-radius: 5px;
+      background: #fff;
+      opacity: 0.9;
+    }
+    .wordmark {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 800;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+      color: var(--ink-900);
+    }
+    .wordmark span { color: var(--magenta-600); }
+
+    .card {
+      max-width: 480px;
+      margin: 18px auto 0;
+      background: var(--white);
+      border-radius: 20px;
+      padding: 30px 26px 28px;
+      box-shadow: 0 8px 30px rgba(194, 0, 122, 0.08);
+      border: 1px solid var(--line);
+    }
+    .card.fade-in { animation: cardFadeIn 0.35s ease; }
+    @keyframes cardFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h1 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+    p.sub { color: var(--ink-600); font-size: 13.5px; margin: 0 0 24px; line-height: 1.5; }
+
+    label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--ink-900);
+      margin: 18px 0 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    select, input[type=date], input[type=text], input[type=password], textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      font-size: 14.5px;
+      font-family: inherit;
+      color: var(--ink-900);
+      background: #fff;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      padding-right: 40px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%237A6570' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      cursor: pointer;
+    }
+    select:disabled { cursor: not-allowed; color: var(--ink-600); }
+    select:focus, input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--magenta-500);
+      box-shadow: 0 0 0 3px var(--magenta-100);
+    }
+    textarea { resize: vertical; min-height: 74px; }
+    input[readonly] { cursor: pointer; background: #fff; }
+    .row2 { display: flex; gap: 10px; }
+    .row2 > div { flex: 1; }
+    .hint { font-size: 11.5px; color: var(--ink-600); margin-top: 6px; }
+
+    /* ---------- CUSTOM FILE PICKER ---------- */
+    .file-input-hidden {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .file-picker-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px dashed var(--line);
+      border-radius: 12px;
+      background: var(--magenta-50);
+      color: var(--ink-600);
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+    .file-picker-btn svg { flex-shrink: 0; color: var(--magenta-600); }
+    .file-picker-btn:hover { border-color: var(--magenta-500); background: var(--magenta-100); }
+    .file-picker-btn.has-file {
+      border-style: solid;
+      border-color: var(--magenta-500);
+      background: #fff;
+      color: var(--ink-900);
+      font-weight: 600;
+    }
+    .file-input-hidden:focus-visible + .file-picker-btn {
+      border-color: var(--magenta-500);
+      box-shadow: 0 0 0 3px var(--magenta-100);
+    }
+
+    button {
+      width: 100%;
+      margin-top: 26px;
+      padding: 15px;
+      background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700));
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(194, 0, 122, 0.28);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    button:active { transform: translateY(1px); box-shadow: 0 3px 10px rgba(194, 0, 122, 0.25); }
+    button:disabled { background: #E8BBD5; box-shadow: none; cursor: not-allowed; }
+
+    #msg {
+      margin-top: 16px;
+      padding: 13px 14px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 500;
+      display: none;
+      align-items: flex-start;
+      gap: 9px;
+      line-height: 1.5;
+    }
+    #msg svg { flex-shrink: 0; margin-top: 1px; }
+    #msg.ok { background: var(--magenta-100); color: var(--magenta-700); display: flex; }
+    #msg.err { background: var(--danger-tint); color: var(--danger); display: flex; }
+
+    .empty-state {
+      text-align: center;
+      color: var(--ink-600);
+      padding: 36px 16px 12px;
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+    .empty-state svg { margin-bottom: 10px; }
+    .empty-state.err { color: var(--danger); }
+
+    /* ---------- GAJI SAYA ---------- */
+    .gaji-periode {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--magenta-700);
+      background: var(--magenta-50);
+      border: 1px solid var(--magenta-100);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+    .gaji-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 4px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14.5px;
+    }
+    .gaji-row:last-of-type { border-bottom: none; }
+    .gaji-row .lbl { color: var(--ink-600); font-weight: 600; }
+    .gaji-row .val { font-weight: 700; color: var(--ink-900); }
+    .gaji-row .val.neg { color: var(--danger); }
+    .gaji-row .val.pos { color: #1F9D63; }
+    .gaji-row.total {
+      margin-top: 6px;
+      padding: 16px 14px;
+      background: linear-gradient(135deg, var(--magenta-700), var(--magenta-500));
+      border-radius: 14px;
+      border-bottom: none;
+    }
+    .gaji-row.total .lbl { color: #fff; opacity: 0.85; font-size: 13px; }
+    .gaji-row.total .val { color: #fff; font-size: 20px; }
+
+    /* ---------- FLATPICKR THEME ---------- */
+    .flatpickr-calendar {
+      border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(194, 0, 122, 0.16);
+      border: 1px solid var(--line);
+      font-family: 'Inter', sans-serif;
+    }
+    .flatpickr-calendar.arrowTop:before, .flatpickr-calendar.arrowTop:after { border-bottom-color: var(--magenta-700); }
+    .flatpickr-months .flatpickr-month {
+      background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700));
+      border-radius: 16px 16px 0 0;
+      color: #fff;
+    }
+    .flatpickr-current-month .flatpickr-monthDropdown-months,
+    .flatpickr-current-month input.cur-year { color: #fff; font-weight: 700; }
+    .flatpickr-current-month .flatpickr-monthDropdown-months option { color: var(--ink-900); }
+    .flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month { fill: #fff; color: #fff; }
+    .flatpickr-months .flatpickr-prev-month:hover svg, .flatpickr-months .flatpickr-next-month:hover svg { fill: var(--magenta-100); }
+    span.flatpickr-weekday { color: var(--ink-600); font-weight: 700; font-size: 11px; text-transform: uppercase; }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover {
+      background: var(--magenta-600); border-color: var(--magenta-600);
+    }
+    .flatpickr-day.today { border-color: var(--magenta-500); }
+    .flatpickr-day:hover { background: var(--magenta-100); }
+    .flatpickr-day.inRange {
+      background: var(--magenta-50); border-color: var(--magenta-50);
+      box-shadow: -5px 0 0 var(--magenta-50), 5px 0 0 var(--magenta-50);
+    }
+
+    .footnote {
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--ink-600);
+      margin-top: 18px;
+    }
+
+    /* ---------- TAB SWITCHER ---------- */
+    .tabs {
+      max-width: 480px;
+      margin: 18px auto 0;
+      display: flex;
+      gap: 6px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px 4px;
+      background: #fff;
+      color: var(--ink-600);
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab-btn.active { background: var(--ink-900); color: #fff; border-color: var(--ink-900); }
+
+    /* ---------- RIWAYAT ---------- */
+    .stat-row { display: flex; gap: 8px; margin: 20px 0 4px; }
+    .stat-mini {
+      flex: 1;
+      background: var(--magenta-50);
+      border-radius: 12px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .stat-mini .num { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 20px; color: var(--magenta-700); }
+    .stat-mini .lbl { font-size: 10.5px; color: var(--ink-600); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.02em; }
+
+    .riwayat-item {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 10px;
+    }
+    .riwayat-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+    .badge.Sakit { background: var(--danger-tint); color: var(--danger); }
+    .badge.Keperluan-Keluarga { background: #FDF1DD; color: #B8790B; }
+    .badge.Cuti-Tahunan { background: #E9EFFC; color: #2C5CC5; }
+    .badge.Lainnya { background: var(--magenta-100); color: var(--magenta-700); }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px 3px 8px; border-radius: 20px;
+      font-size: 10.5px; font-weight: 700; white-space: nowrap;
+    }
+    .status-pill::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .status-pill.Pending { background: #FDF1DD; color: #B8790B; }
+    .status-pill.Approved { background: #E6F7EE; color: #1F9D63; }
+    .status-pill.Rejected { background: var(--danger-tint); color: var(--danger); }
+    .riwayat-item .meta { color: var(--ink-600); font-size: 13px; margin-top: 6px; }
+    .riwayat-item .catatan {
+      margin-top: 8px; padding: 8px 10px;
+      background: var(--danger-tint); color: var(--danger);
+      border-radius: 8px; font-size: 12.5px;
+    }
+    .edit-toggle-btn {
+      margin-top: 12px;
+      width: auto;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 700;
+      background: #fff;
+      color: var(--magenta-600);
+      border: 1.5px solid var(--magenta-500);
+      box-shadow: none;
+    }
+    .edit-toggle-btn:active { transform: translateY(1px); }
+    .edit-form {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--line);
+    }
+    .edit-form label { margin: 12px 0 6px; }
+    .edit-form label:first-child { margin-top: 0; }
+    .edit-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .edit-actions button { margin-top: 0; width: auto; flex: 1; padding: 11px; font-size: 13px; }
+    .edit-actions .btn-save { background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700)); color: #fff; box-shadow: none; }
+    .edit-actions .btn-cancel { background: #fff; color: var(--ink-600); border: 1.5px solid var(--line); }
+    .edit-msg { font-size: 12.5px; margin-top: 10px; }
+    .edit-msg.err { color: var(--danger); }
+  </style>
+</head>
+<body>
+
+  <div id="splash">
+    <div class="splash-inner">
+      <div class="splash-mark"></div>
+      <div class="splash-word">Dispatcher<span>Sejasa</span></div>
+      <div class="splash-dots"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <div class="topband">
+    <div class="mark"></div>
+    <div class="wordmark">Dispatcher<span>Sejasa</span></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabAjukanBtn" onclick="switchView('ajukan')">Ajukan Izin</button>
+    <button class="tab-btn" id="tabRiwayatBtn" onclick="switchView('riwayat')">Riwayat Izin</button>
+    <button class="tab-btn" id="tabGajiBtn" onclick="switchView('gaji')">Gaji Saya</button>
+  </div>
+
+  <div class="card" id="ajukanView">
+    <h1>Ajukan Izin</h1>
+    <p class="sub">Isi form di bawah untuk mengajukan izin. Tim admin akan meninjau dan mengonfirmasi pengajuan Anda.</p>
+
+    <form id="izinForm">
+      <label>Nama Mitra</label>
+      <select id="nama" required>
+        <option value="">Memuat daftar mitra...</option>
+      </select>
+
+      <label>PIN</label>
+      <input type="password" id="pinAjukan" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="4 digit PIN Anda" required>
+      <div class="hint">PIN dipakai untuk memastikan pengajuan ini benar dari Anda sendiri.</div>
+
+      <label>Kategori Izin</label>
+      <select id="kategori" required>
+        <option value="">Memuat kategori...</option>
+      </select>
+
+      <div class="row2">
+        <div>
+          <label>Tanggal Mulai</label>
+          <input type="text" id="tanggalMulai" placeholder="Pilih tanggal" autocomplete="off" readonly>
+        </div>
+        <div>
+          <label>Tanggal Selesai</label>
+          <input type="text" id="tanggalSelesai" placeholder="Pilih tanggal" autocomplete="off" readonly>
+        </div>
+      </div>
+
+      <label>Keterangan</label>
+      <textarea id="keterangan" placeholder="Jelaskan alasan izin secara singkat"></textarea>
+
+      <label>Lampiran</label>
+      <input type="file" id="lampiran" accept="image/*,.pdf" required class="file-input-hidden">
+      <label for="lampiran" class="file-picker-btn" id="filePickerLabel">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M14.5 8.5L9.4 13.6a2.6 2.6 0 01-3.7-3.7l6.2-6.2a1.8 1.8 0 012.5 2.5l-6.1 6.1a1 1 0 01-1.4-1.4l5.3-5.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="fileNameDisplay">Pilih file lampiran</span>
+      </label>
+      <div class="hint">Format JPG, PNG, atau PDF · Maksimal 5MB.</div>
+
+      <button type="submit" id="submitBtn" disabled>Memuat data mitra...</button>
+      <div id="msg"></div>
+    </form>
+  </div>
+
+  <div class="card" id="riwayatView" style="display:none;">
+    <h1>Riwayat Izin</h1>
+    <p class="sub">Pilih nama Anda untuk melihat riwayat pengajuan izin dan statusnya.</p>
+
+    <label>Nama Mitra</label>
+    <select id="namaRiwayat">
+      <option value="">Memuat daftar mitra...</option>
+    </select>
+
+    <label>PIN</label>
+    <input type="password" id="pinRiwayat" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="4 digit PIN Anda">
+
+    <button type="button" id="cekRiwayatBtn" style="margin-top:16px;" onclick="cekRiwayat()" disabled>Memuat data mitra...</button>
+
+    <div id="riwayatContent"></div>
+  </div>
+
+  <div class="card" id="gajiView" style="display:none;">
+    <h1>Gaji Saya</h1>
+    <p class="sub">Pilih nama Anda untuk melihat rincian gaji periode terbaru yang sudah diproses admin.</p>
+
+    <label>Nama Mitra</label>
+    <select id="namaGaji">
+      <option value="">Memuat daftar mitra...</option>
+    </select>
+
+    <label>PIN</label>
+    <input type="password" id="pinGaji" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="4 digit PIN Anda">
+
+    <button type="button" id="cekGajiBtn" style="margin-top:16px;" onclick="cekGaji()" disabled>Memuat data mitra...</button>
+
+    <div id="gajiContent"></div>
+  </div>
+
+  <p class="footnote">Dispatcher Sejasa · Sistem Pengajuan Izin</p>
+
+  <script>
+    // =====================================================================
+    // GANTI URL DI BAWAH INI DENGAN URL DEPLOY APPS SCRIPT LO SENDIRI
+    // (yang bentuknya https://script.google.com/macros/s/xxxxx/exec)
+    // =====================================================================
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz-SrJ2xMwHPh8nLNdtTkGVIJl_NYvtJJ0nNo6WQY2W8CautOkGeyTD1J1W6P9JxePy/exec';
+
+    // Pengganti google.script.run: manggil backend Apps Script via fetch.
+    // Pakai Content-Type text/plain supaya browser TIDAK mengirim preflight
+    // OPTIONS request (Apps Script tidak menangani OPTIONS), jadi request
+    // langsung berhasil dari domain manapun (GitHub Pages, dll).
+    function callApi(action, params) {
+      return fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: action, params: params || [] })
+      }).then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      });
+    }
+
+    // ---------- SPLASH SCREEN ----------
+    function hideSplash() {
+      const splash = document.getElementById('splash');
+      if (splash) splash.classList.add('hide');
+    }
+    // Kasih jeda dikit biar animasinya kelihatan, jangan cuma kedip
+    window.addEventListener('load', function() {
+      setTimeout(hideSplash, 900);
+    });
+    // Safety net kalau load event telat/gak fire (misal file besar)
+    setTimeout(hideSplash, 2500);
+
+    // ---------- KALENDER (flatpickr) ----------
+    const fpMulai = flatpickr('#tanggalMulai', {
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'd M Y',
+      disableMobile: true,
+      onChange: function(selectedDates, dateStr) {
+        fpSelesai.set('minDate', dateStr);
+      }
+    });
+    const fpSelesai = flatpickr('#tanggalSelesai', {
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'd M Y',
+      disableMobile: true
+    });
+
+    let KATEGORI_LIST = [];
+
+    callApi('getFormInitData', [])
+      .then(function(data) {
+        const optionsHtml = '<option value="">Pilih nama Anda</option>' +
+          data.mitraList.map(n => '<option value="' + n + '">' + n + '</option>').join('');
+        document.getElementById('nama').innerHTML = optionsHtml;
+        document.getElementById('namaRiwayat').innerHTML = optionsHtml;
+        document.getElementById('namaGaji').innerHTML = optionsHtml;
+
+        KATEGORI_LIST = data.kategoriList || [];
+        const kategoriOptionsHtml = '<option value="">Pilih kategori</option>' +
+          KATEGORI_LIST.map(k => '<option>' + k + '</option>').join('');
+        document.getElementById('kategori').innerHTML = kategoriOptionsHtml;
+
+        const submitBtnEl = document.getElementById('submitBtn');
+        submitBtnEl.disabled = false;
+        submitBtnEl.textContent = 'Kirim Pengajuan';
+
+        const cekBtnEl = document.getElementById('cekRiwayatBtn');
+        cekBtnEl.disabled = false;
+        cekBtnEl.textContent = 'Lihat Riwayat';
+
+        const cekGajiBtnEl = document.getElementById('cekGajiBtn');
+        cekGajiBtnEl.disabled = false;
+        cekGajiBtnEl.textContent = 'Lihat Gaji';
+      })
+      .catch(function(err) {
+        document.getElementById('nama').innerHTML = '<option value="">Gagal memuat daftar mitra</option>';
+        document.getElementById('namaRiwayat').innerHTML = '<option value="">Gagal memuat daftar mitra</option>';
+        document.getElementById('namaGaji').innerHTML = '<option value="">Gagal memuat daftar mitra</option>';
+        document.getElementById('kategori').innerHTML = '<option value="">Gagal memuat kategori</option>';
+        const submitBtnEl = document.getElementById('submitBtn');
+        submitBtnEl.textContent = 'Gagal memuat, muat ulang halaman';
+        const cekBtnEl = document.getElementById('cekRiwayatBtn');
+        cekBtnEl.textContent = 'Gagal memuat, muat ulang halaman';
+        const cekGajiBtnEl = document.getElementById('cekGajiBtn');
+        cekGajiBtnEl.textContent = 'Gagal memuat, muat ulang halaman';
+      });
+
+    function switchView(view) {
+      document.getElementById('tabAjukanBtn').classList.toggle('active', view === 'ajukan');
+      document.getElementById('tabRiwayatBtn').classList.toggle('active', view === 'riwayat');
+      document.getElementById('tabGajiBtn').classList.toggle('active', view === 'gaji');
+      const els = {
+        ajukan: document.getElementById('ajukanView'),
+        riwayat: document.getElementById('riwayatView'),
+        gaji: document.getElementById('gajiView')
+      };
+      Object.keys(els).forEach(function(key) {
+        els[key].style.display = key === view ? 'block' : 'none';
+      });
+      const activeEl = els[view];
+      activeEl.classList.remove('fade-in');
+      // Trigger reflow biar animasi fade-in kepasang ulang tiap kali pindah tab
+      void activeEl.offsetWidth;
+      activeEl.classList.add('fade-in');
+    }
+
+    function badgeClass(kategori) {
+      return (kategori || 'Lainnya').replace(/\s+/g, '-');
+    }
+
+    function fmtDate(d) {
+      if (!d) return '-';
+      const dt = new Date(d);
+      return dt.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function toISODate(d) {
+      const dt = new Date(d);
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + day;
+    }
+
+    let riwayatDataById = {};
+
+    const ICON_ERR_LG = '<svg width="32" height="32" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M10 6.2v4.6M10 13.6h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    const ICON_EMPTY = '<svg width="32" height="32" viewBox="0 0 20 20" fill="none"><rect x="4" y="2.5" width="12" height="15" rx="1.6" stroke="currentColor" stroke-width="1.4"/><path d="M7 7h6M7 10h6M7 13h3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+
+    function openEditIzin(id) {
+      const existing = document.getElementById('editForm-' + id);
+      if (!existing) return;
+      if (existing.style.display !== 'none') {
+        closeEditIzin(id);
+        return;
+      }
+      const r = riwayatDataById[id];
+      existing.style.display = 'block';
+      existing.innerHTML = `
+        <label>Kategori Izin</label>
+        <select id="editKategori-${id}">
+          ${KATEGORI_LIST.map(k => `<option${r.kategori === k ? ' selected' : ''}>${k}</option>`).join('')}
+        </select>
+        <div class="row2" style="margin-top:12px;">
+          <div>
+            <label>Tanggal Mulai</label>
+            <input type="text" id="editTanggalMulai-${id}" autocomplete="off" readonly>
+          </div>
+          <div>
+            <label>Tanggal Selesai</label>
+            <input type="text" id="editTanggalSelesai-${id}" autocomplete="off" readonly>
+          </div>
+        </div>
+        <label>Keterangan</label>
+        <textarea id="editKeterangan-${id}">${r.keterangan || ''}</textarea>
+        <div class="edit-actions">
+          <button type="button" class="btn-save" onclick="saveEditIzin('${id}')">Simpan Perubahan</button>
+          <button type="button" class="btn-cancel" onclick="closeEditIzin('${id}')">Batal</button>
+        </div>
+        <div class="edit-msg" id="editMsg-${id}"></div>
+      `;
+      const editFpSelesai = flatpickr('#editTanggalSelesai-' + id, {
+        dateFormat: 'Y-m-d', altInput: true, altFormat: 'd M Y', disableMobile: true,
+        defaultDate: toISODate(r.tanggalSelesai)
+      });
+      flatpickr('#editTanggalMulai-' + id, {
+        dateFormat: 'Y-m-d', altInput: true, altFormat: 'd M Y', disableMobile: true,
+        defaultDate: toISODate(r.tanggalMulai),
+        onChange: function(sd, dateStr) { editFpSelesai.set('minDate', dateStr); }
+      });
+    }
+
+    function closeEditIzin(id) {
+      const container = document.getElementById('editForm-' + id);
+      if (container) { container.style.display = 'none'; container.innerHTML = ''; }
+    }
+
+    function saveEditIzin(id) {
+      const nama = document.getElementById('namaRiwayat').value;
+      const pin = document.getElementById('pinRiwayat').value;
+      const kategori = document.getElementById('editKategori-' + id).value;
+      const tanggalMulai = document.getElementById('editTanggalMulai-' + id).value;
+      const tanggalSelesai = document.getElementById('editTanggalSelesai-' + id).value;
+      const keterangan = document.getElementById('editKeterangan-' + id).value;
+      const editMsgEl = document.getElementById('editMsg-' + id);
+      editMsgEl.className = 'edit-msg';
+      editMsgEl.textContent = '';
+
+      if (!tanggalMulai || !tanggalSelesai) {
+        editMsgEl.className = 'edit-msg err';
+        editMsgEl.textContent = 'Pilih Tanggal Mulai dan Tanggal Selesai.';
+        return;
+      }
+      if (tanggalSelesai < tanggalMulai) {
+        editMsgEl.className = 'edit-msg err';
+        editMsgEl.textContent = 'Tanggal Selesai tidak boleh sebelum Tanggal Mulai.';
+        return;
+      }
+
+      const saveBtn = document.querySelector('#editForm-' + id + ' .btn-save');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Menyimpan...';
+
+      callApi('updateIzin', [nama, pin, id, { kategori: kategori, tanggalMulai: tanggalMulai, tanggalSelesai: tanggalSelesai, keterangan: keterangan }])
+        .then(function(res) {
+          if (res.success) {
+            cekRiwayat();
+          } else {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Simpan Perubahan';
+            editMsgEl.className = 'edit-msg err';
+            editMsgEl.textContent = res.message;
+          }
+        })
+        .catch(function(err) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Simpan Perubahan';
+          editMsgEl.className = 'edit-msg err';
+          editMsgEl.textContent = 'Gagal menyimpan: ' + err.message;
+        });
+    }
+
+    function cekRiwayat() {
+      const nama = document.getElementById('namaRiwayat').value;
+      const pin = document.getElementById('pinRiwayat').value;
+      const content = document.getElementById('riwayatContent');
+      const btn = document.getElementById('cekRiwayatBtn');
+
+      if (!nama) { alert('Pilih nama Anda dulu.'); return; }
+      if (!pin) { alert('Masukkan PIN Anda.'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Memuat...';
+      content.innerHTML = '';
+
+      callApi('getRiwayatMitra', [nama, pin])
+        .then(function(data) {
+          btn.disabled = false;
+          btn.textContent = 'Lihat Riwayat';
+
+          if (!data.success) {
+            content.innerHTML = '<div class="empty-state err">' + ICON_ERR_LG + '<div>' + data.message + '</div></div>';
+            return;
+          }
+
+          if (!data.rows.length) {
+            content.innerHTML = '<div class="empty-state">' + ICON_EMPTY + '<div>Belum ada riwayat pengajuan izin.</div></div>';
+            return;
+          }
+
+          const statsHtml = `
+            <div class="stat-row">
+              <div class="stat-mini"><div class="num">${data.totalPengajuan}</div><div class="lbl">Total</div></div>
+              <div class="stat-mini"><div class="num">${data.approved}</div><div class="lbl">Disetujui</div></div>
+              <div class="stat-mini"><div class="num">${data.pending}</div><div class="lbl">Menunggu</div></div>
+              <div class="stat-mini"><div class="num">${data.rejected}</div><div class="lbl">Ditolak</div></div>
+            </div>
+          `;
+
+          riwayatDataById = {};
+          data.rows.forEach(r => { riwayatDataById[r.id] = r; });
+
+          const listHtml = data.rows.map(r => `
+            <div class="riwayat-item">
+              <div class="riwayat-top">
+                <span class="badge ${badgeClass(r.kategori)}">${r.kategori}</span>
+                <span class="status-pill ${r.status}">${r.status}</span>
+              </div>
+              <div class="meta">${fmtDate(r.tanggalMulai)} – ${fmtDate(r.tanggalSelesai)} · ${r.jumlahHari} hari</div>
+              ${r.keterangan ? `<div class="meta">${r.keterangan}</div>` : ''}
+              ${r.status === 'Rejected' && r.catatanAdmin ? `<div class="catatan">Alasan: ${r.catatanAdmin}</div>` : ''}
+              ${r.status === 'Pending' ? `<button type="button" class="edit-toggle-btn" onclick="openEditIzin('${r.id}')">Edit Pengajuan</button>` : ''}
+              <div class="edit-form" id="editForm-${r.id}" style="display:none;"></div>
+            </div>
+          `).join('');
+
+          content.innerHTML = statsHtml + listHtml;
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Lihat Riwayat';
+          content.innerHTML = '<div class="empty-state err">' + ICON_ERR_LG + '<div>Gagal memuat: ' + err.message + '</div></div>';
+        });
+    }
+
+    function fmtRupiah(n) {
+      const num = Number(n) || 0;
+      const sign = num < 0 ? '-' : '';
+      return sign + 'Rp' + Math.abs(num).toLocaleString('id-ID');
+    }
+
+    function fmtJam(n) {
+      const num = Number(n) || 0;
+      // tampilkan tanpa desimal kalau bilangan bulat, 1 desimal kalau ada pecahan
+      const formatted = Number.isInteger(num) ? num.toLocaleString('id-ID') : num.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      return formatted + ' Jam';
+    }
+
+    function cekGaji() {
+      const nama = document.getElementById('namaGaji').value;
+      const pin = document.getElementById('pinGaji').value;
+      const content = document.getElementById('gajiContent');
+      const btn = document.getElementById('cekGajiBtn');
+
+      if (!nama) { alert('Pilih nama Anda dulu.'); return; }
+      if (!pin) { alert('Masukkan PIN Anda.'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Memuat...';
+      content.innerHTML = '';
+
+      callApi('getGajiTerbaru', [nama, pin])
+        .then(function(data) {
+          btn.disabled = false;
+          btn.textContent = 'Lihat Gaji';
+
+          if (!data.success) {
+            content.innerHTML = '<div class="empty-state err">' + ICON_ERR_LG + '<div>' + data.message + '</div></div>';
+            return;
+          }
+
+          content.innerHTML = `
+            <div class="gaji-periode">Periode: ${data.periodeLabel}</div>
+            <div class="gaji-row">
+              <span class="lbl">Durasi Kerja</span>
+              <span class="val">${fmtJam(data.durasiKerja)}</span>
+            </div>
+            <div class="gaji-row">
+              <span class="lbl">Upah</span>
+              <span class="val">${fmtRupiah(data.gajiPokok)}</span>
+            </div>
+            <div class="gaji-row">
+              <span class="lbl">Pinalti</span>
+              <span class="val ${data.pinalti > 0 ? 'neg' : ''}">${data.pinalti > 0 ? '-' : ''}${fmtRupiah(data.pinalti)}</span>
+            </div>
+            <div class="gaji-row">
+              <span class="lbl">Kompensasi</span>
+              <span class="val pos">${fmtRupiah(data.kompensasi)}</span>
+            </div>
+            <div class="gaji-row">
+              <span class="lbl">Bonus</span>
+              <span class="val pos">${fmtRupiah(data.bonus)}</span>
+            </div>
+            <div class="gaji-row total">
+              <span class="lbl">Gaji Total</span>
+              <span class="val">${fmtRupiah(data.gajiTotal)}</span>
+            </div>
+          `;
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Lihat Gaji';
+          content.innerHTML = '<div class="empty-state err">' + ICON_ERR_LG + '<div>Gagal memuat: ' + err.message + '</div></div>';
+        });
+    }
+    const lampiranInput = document.getElementById('lampiran');
+    const filePickerLabel = document.getElementById('filePickerLabel');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    lampiranInput.addEventListener('change', function() {
+      const f = lampiranInput.files[0];
+      if (f) {
+        fileNameDisplay.textContent = f.name;
+        filePickerLabel.classList.add('has-file');
+      } else {
+        fileNameDisplay.textContent = 'Pilih file lampiran';
+        filePickerLabel.classList.remove('has-file');
+      }
+    });
+
+    const form = document.getElementById('izinForm');
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('submitBtn');
+    const MAX_LAMPIRAN_BYTES = 5 * 1024 * 1024; // 5MB
+    const ALLOWED_LAMPIRAN_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+    const ICON_ERR = '<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.2v4.6M10 13.6h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    const ICON_OK = '<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M6.6 10.2l2.3 2.3l4.5-4.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    function setFormMsg(type, text) {
+      msg.style.display = '';
+      msg.className = type;
+      msg.innerHTML = (type === 'ok' ? ICON_OK : ICON_ERR) + '<span>' + text + '</span>';
+    }
+
+    function showFormError(text) {
+      setFormMsg('err', text);
+    }
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      msg.style.display = 'none';
+
+      const pin = document.getElementById('pinAjukan').value;
+      if (!pin) {
+        showFormError('Masukkan PIN Anda dulu.');
+        return;
+      }
+
+      const tanggalMulai = document.getElementById('tanggalMulai').value;
+      const tanggalSelesai = document.getElementById('tanggalSelesai').value;
+      if (!tanggalMulai || !tanggalSelesai) {
+        showFormError('Pilih Tanggal Mulai dan Tanggal Selesai.');
+        return;
+      }
+      if (tanggalSelesai < tanggalMulai) {
+        showFormError('Tanggal Selesai tidak boleh sebelum Tanggal Mulai.');
+        return;
+      }
+
+      const fileInput = document.getElementById('lampiran');
+      const file = fileInput.files[0];
+      if (!file) {
+        showFormError('Lampiran wajib diupload.');
+        return;
+      }
+      if (file.size > MAX_LAMPIRAN_BYTES) {
+        showFormError('Ukuran lampiran terlalu besar. Maksimal 5MB.');
+        return;
+      }
+      if (ALLOWED_LAMPIRAN_TYPES.indexOf(file.type) === -1) {
+        showFormError('Format lampiran harus JPG, PNG, atau PDF.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Mengirim...';
+
+      function doSubmit(fileBase64, fileName, fileMime) {
+        const payload = {
+          nama: document.getElementById('nama').value,
+          pin: pin,
+          kategori: document.getElementById('kategori').value,
+          tanggalMulai: tanggalMulai,
+          tanggalSelesai: tanggalSelesai,
+          keterangan: document.getElementById('keterangan').value,
+          fileBase64: fileBase64 || '',
+          fileName: fileName || '',
+          fileMime: fileMime || ''
+        };
+
+        callApi('submitIzin', [payload])
+          .then(function(res) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Pengajuan';
+            setFormMsg(res.success ? 'ok' : 'err', res.message);
+            if (res.success) {
+              form.reset();
+              fpMulai.clear();
+              fpSelesai.clear();
+              fileNameDisplay.textContent = 'Pilih file lampiran';
+              filePickerLabel.classList.remove('has-file');
+            }
+          })
+          .catch(function(err) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Pengajuan';
+            showFormError('Gagal mengirim: ' + err.message);
+          });
+      }
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function() {
+          const base64 = reader.result.split(',')[1];
+          doSubmit(base64, file.name, file.type);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        doSubmit();
+      }
+    });
+    // ---------- PWA: daftarkan service worker ----------
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('service-worker.js').catch(function(err) {
+          console.warn('Service worker gagal daftar:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

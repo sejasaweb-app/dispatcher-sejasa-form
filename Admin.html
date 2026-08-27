@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --magenta-700: #8A0057;
+      --magenta-600: #C2007A;
+      --magenta-500: #E0158F;
+      --magenta-100: #FDE7F2;
+      --magenta-50: #FFF6FA;
+      --ink-900: #22151D;
+      --ink-600: #7A6570;
+      --line: #F0DDE7;
+      --white: #FFFFFF;
+      --success: #1F9D63;
+      --success-tint: #E6F7EE;
+      --danger: #E2483D;
+      --danger-tint: #FDEAE8;
+      --amber: #B8790B;
+      --amber-tint: #FDF1DD;
+      --blue: #2C5CC5;
+      --blue-tint: #E9EFFC;
+    }
+    * { box-sizing: border-box; }
+    button:focus-visible, a:focus-visible, .tab-btn:focus-visible { outline: 2px solid var(--magenta-500); outline-offset: 2px; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--magenta-50);
+      margin: 0;
+      padding: 0;
+      color: var(--ink-900);
+    }
+    h1, h2, .display { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    /* ---------- SPLASH SCREEN ---------- */
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--magenta-700) 0%, var(--magenta-500) 100%);
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    #splash.hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .splash-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      animation: splashRise 0.55s cubic-bezier(.2,.8,.2,1);
+    }
+    .splash-mark {
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      background: #fff;
+      position: relative;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.22);
+      animation: splashPulse 1.6s ease-in-out infinite;
+    }
+    .splash-mark::after {
+      content: '';
+      position: absolute;
+      top: 18px; left: 18px;
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700));
+    }
+    .splash-word {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+    .splash-word span { color: #FFD1EC; }
+    .splash-dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .splash-dots span {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.85);
+      animation: splashDot 1s ease-in-out infinite;
+    }
+    .splash-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .splash-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes splashRise {
+      from { opacity: 0; transform: translateY(14px) scale(0.92); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes splashPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.07); }
+    }
+    @keyframes splashDot {
+      0%, 80%, 100% { opacity: 0.35; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-4px); }
+    }
+
+    /* ---------- LOGIN ---------- */
+    #loginView {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 340px;
+      background: #fff;
+      padding: 32px 28px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(194, 0, 122, 0.12);
+      border: 1px solid var(--line);
+    }
+    .login-mark {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700));
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .login-mark::after {
+      content: '';
+      position: absolute; top: 11px; left: 11px;
+      width: 18px; height: 18px; border-radius: 6px;
+      background: #fff; opacity: 0.9;
+    }
+    .login-card h2 { font-size: 19px; font-weight: 800; margin: 0 0 2px; }
+    .login-card p { font-size: 13px; color: var(--ink-600); margin: 0 0 20px; }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: inherit;
+      margin-bottom: 12px;
+    }
+    input:focus { outline: none; border-color: var(--magenta-500); box-shadow: 0 0 0 3px var(--magenta-100); }
+    button {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      border-radius: 12px;
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700));
+      color: #fff;
+      font-size: 14.5px;
+      box-shadow: 0 6px 16px rgba(194, 0, 122, 0.25);
+    }
+    .btn-secondary {
+      padding: 9px 16px;
+      background: #fff;
+      color: var(--ink-900);
+      border: 1.5px solid var(--line);
+      font-size: 13.5px;
+    }
+    #loginMsg { color: var(--danger); font-size: 13px; margin-top: 4px; min-height: 16px; }
+
+    /* ---------- MAIN ---------- */
+    #mainView { max-width: 920px; margin: 0 auto; padding: 24px 20px 60px; }
+    #topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 4px;
+    }
+    #topbar .brand { display: flex; align-items: center; gap: 10px; }
+    #topbar .mark {
+      width: 30px; height: 30px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700));
+      position: relative;
+    }
+    #topbar .mark::after {
+      content: ''; position: absolute; top: 8px; left: 8px;
+      width: 14px; height: 14px; border-radius: 5px; background: #fff; opacity: 0.9;
+    }
+    #topbar h1 { font-size: 19px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+    #topbar .sub { font-size: 12.5px; color: var(--ink-600); margin: 1px 0 0; }
+
+    .tabs { display: flex; gap: 8px; margin: 22px 0 18px; }
+    .tab-btn {
+      padding: 9px 16px;
+      background: #fff;
+      color: var(--ink-600);
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer;
+    }
+    .tab-btn.active { background: var(--ink-900); color: #fff; border-color: var(--ink-900); }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 12px;
+      border: 1px solid var(--line);
+    }
+
+    /* avatar signature element */
+    .avatar {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--magenta-500), var(--magenta-700));
+      color: #fff;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 800;
+      font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .req-card { display: flex; gap: 14px; }
+    .req-card .body { flex: 1; min-width: 0; }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .name { font-weight: 700; font-size: 15px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+    .badge.Sakit { background: var(--danger-tint); color: var(--danger); }
+    .badge.Keperluan-Keluarga { background: var(--amber-tint); color: var(--amber); }
+    .badge.Cuti-Tahunan { background: var(--blue-tint); color: var(--blue); }
+    .badge.Lainnya { background: var(--magenta-100); color: var(--magenta-700); }
+    .meta { color: var(--ink-600); font-size: 13px; margin-top: 4px; line-height: 1.5; }
+    .actions { margin-top: 12px; display: flex; gap: 8px; }
+    .actions button { padding: 9px 16px; font-size: 13.5px; color: #fff; }
+    .actions .approve { background: var(--success); }
+    .actions .reject { background: var(--danger); }
+    a.lampiran {
+      font-size: 12.5px; font-weight: 600; color: var(--magenta-600);
+      text-decoration: none;
+    }
+    a.lampiran:hover { text-decoration: underline; }
+
+    #topbar-right { display: flex; align-items: center; }
+
+    .stat-grid { display: flex; gap: 12px; margin-top: 4px; flex-wrap: wrap; }
+    .stat-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 18px 22px;
+      flex: 1;
+      min-width: 160px;
+      border: 1px solid var(--line);
+    }
+    .stat-box .num { font-size: 30px; font-weight: 800; color: var(--magenta-600); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .stat-box .label { font-size: 12.5px; color: var(--ink-600); margin-top: 4px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+    th {
+      text-align: left; padding: 9px 8px;
+      color: var(--ink-600); font-weight: 700; font-size: 11.5px;
+      text-transform: uppercase; letter-spacing: 0.03em;
+      border-bottom: 1.5px solid var(--line);
+    }
+    td { padding: 11px 8px; border-bottom: 1px solid var(--line); }
+    tr:last-child td { border-bottom: none; }
+
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px 3px 8px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+    }
+    .status-pill::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .status-pill.Approved { background: var(--success-tint); color: var(--success); }
+    .status-pill.Rejected { background: var(--danger-tint); color: var(--danger); }
+
+    .empty {
+      text-align: center; color: var(--ink-600);
+      padding: 40px 20px; font-size: 14px;
+    }
+    .period-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+    .period-toggle button.on { background: var(--ink-900); color: #fff; }
+    .period-toggle button.off { background: #fff; color: var(--ink-900); border: 1.5px solid var(--line); }
+  </style>
+</head>
+<body>
+
+  <div id="splash">
+    <div class="splash-inner">
+      <div class="splash-mark"></div>
+      <div class="splash-word">Dispatcher<span>Sejasa</span></div>
+      <div class="splash-dots"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <div id="loginView">
+    <div class="login-card">
+      <div class="login-mark"></div>
+      <h2>Admin Dispatcher Sejasa</h2>
+      <p>Masuk untuk mengelola pengajuan izin</p>
+      <input id="username" placeholder="Username">
+      <input id="password" type="password" placeholder="Password">
+      <button class="btn-primary" onclick="doLogin()">Masuk</button>
+      <div id="loginMsg"></div>
+    </div>
+  </div>
+
+  <div id="mainView" style="display:none;">
+    <div id="topbar">
+      <div class="brand">
+        <div class="mark"></div>
+        <div>
+          <h1>Manajemen Izin</h1>
+          <p class="sub">Dispatcher Sejasa</p>
+        </div>
+      </div>
+      <button class="btn-secondary" onclick="logout()">Keluar</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="pending" onclick="switchTab('pending')">Menunggu Approval</button>
+      <button class="tab-btn" data-tab="riwayat" onclick="switchTab('riwayat')">Riwayat</button>
+      <button class="tab-btn" data-tab="laporan" onclick="switchTab('laporan')">Laporan</button>
+    </div>
+
+    <div id="pendingTab"></div>
+    <div id="riwayatTab" style="display:none;"></div>
+    <div id="laporanTab" style="display:none;"></div>
+  </div>
+
+  <script>
+    // ---------- SPLASH SCREEN ----------
+    function hideSplash() {
+      const splash = document.getElementById('splash');
+      if (splash) splash.classList.add('hide');
+    }
+    window.addEventListener('load', function() {
+      setTimeout(hideSplash, 900);
+    });
+    setTimeout(hideSplash, 2500);
+
+    let TOKEN = null;
+
+    function initials(name) {
+      if (!name) return '?';
+      const parts = name.trim().split(/\s+/);
+      return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+    }
+
+    function doLogin() {
+      const u = document.getElementById('username').value;
+      const p = document.getElementById('password').value;
+      document.getElementById('loginMsg').textContent = '';
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) {
+            TOKEN = res.token;
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('mainView').style.display = 'block';
+            loadPending();
+          } else {
+            document.getElementById('loginMsg').textContent = res.message;
+          }
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('loginMsg').textContent = err.message;
+        })
+        .adminLogin(u, p);
+    }
+
+    function logout() {
+      TOKEN = null;
+      document.getElementById('mainView').style.display = 'none';
+      document.getElementById('loginView').style.display = 'flex';
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.getElementById('pendingTab').style.display = tab === 'pending' ? 'block' : 'none';
+      document.getElementById('riwayatTab').style.display = tab === 'riwayat' ? 'block' : 'none';
+      document.getElementById('laporanTab').style.display = tab === 'laporan' ? 'block' : 'none';
+      if (tab === 'pending') loadPending();
+      if (tab === 'riwayat') loadRiwayat();
+      if (tab === 'laporan') loadLaporan('monthly');
+    }
+
+    function fmtDate(d) {
+      if (!d) return '-';
+      const dt = new Date(d);
+      return dt.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function badgeClass(kategori) {
+      return (kategori || 'Lainnya').replace(/\s+/g, '-');
+    }
+
+    function loadPending() {
+      const el = document.getElementById('pendingTab');
+      el.innerHTML = '<div class="card empty">Memuat...</div>';
+      google.script.run
+        .withSuccessHandler(function(rows) {
+          if (!rows.length) {
+            el.innerHTML = '<div class="card empty">Tidak ada pengajuan yang menunggu approval 🎉</div>';
+            return;
+          }
+          el.innerHTML = rows.map(r => `
+            <div class="card req-card">
+              <div class="avatar">${initials(r.nama)}</div>
+              <div class="body">
+                <div class="card-top">
+                  <div>
+                    <span class="name">${r.nama}</span>
+                    <span class="badge ${badgeClass(r.kategori)}">${r.kategori}</span>
+                  </div>
+                  <div class="meta" style="white-space:nowrap;">${fmtDate(r.timestampSubmit)}</div>
+                </div>
+                <div class="meta">${fmtDate(r.tanggalMulai)} – ${fmtDate(r.tanggalSelesai)} · ${r.jumlahHari} hari</div>
+                <div class="meta">${r.keterangan || '-'}</div>
+                ${r.linkLampiran ? `<div style="margin-top:8px;"><a class="lampiran" href="${r.linkLampiran}" target="_blank">Lihat Lampiran →</a></div>` : ''}
+                <div class="actions">
+                  <button class="approve" onclick="process(${r.rowIndex}, 'approve')">Approve</button>
+                  <button class="reject" onclick="process(${r.rowIndex}, 'reject')">Reject</button>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        })
+        .withFailureHandler(function(err) { el.innerHTML = '<div class="card empty">' + err.message + '</div>'; })
+        .getPendingIzin(TOKEN);
+    }
+
+    function process(rowIndex, action) {
+      let catatan = '';
+      if (action === 'reject') {
+        catatan = prompt('Alasan reject (opsional):') || '';
+      }
+      google.script.run
+        .withSuccessHandler(function() { loadPending(); })
+        .withFailureHandler(function(err) { alert('Gagal: ' + err.message); })
+        .processIzin(TOKEN, rowIndex, action, catatan);
+    }
+
+    function loadRiwayat() {
+      const el = document.getElementById('riwayatTab');
+      el.innerHTML = '<div class="card empty">Memuat...</div>';
+      google.script.run
+        .withSuccessHandler(function(rows) {
+          if (!rows.length) {
+            el.innerHTML = '<div class="card empty">Belum ada riwayat.</div>';
+            return;
+          }
+          el.innerHTML = `<div class="card"><table>
+            <tr><th>Mitra</th><th>Kategori</th><th>Tanggal</th><th>Status</th><th>Diproses Oleh</th></tr>
+            ${rows.map(r => `
+              <tr>
+                <td style="display:flex;align-items:center;gap:8px;">
+                  <div class="avatar" style="width:28px;height:28px;border-radius:8px;font-size:11px;">${initials(r.nama)}</div>
+                  ${r.nama}
+                </td>
+                <td>${r.kategori}</td>
+                <td>${fmtDate(r.tanggalMulai)} – ${fmtDate(r.tanggalSelesai)}</td>
+                <td><span class="status-pill ${r.status}">${r.status}</span></td>
+                <td>${r.diprosesOleh || '-'}</td>
+              </tr>
+            `).join('')}
+          </table></div>`;
+        })
+        .withFailureHandler(function(err) { el.innerHTML = '<div class="card empty">' + err.message + '</div>'; })
+        .getRiwayatIzin(TOKEN);
+    }
+
+    function loadLaporan(periode) {
+      const el = document.getElementById('laporanTab');
+      el.innerHTML = '<div class="card empty">Memuat...</div>';
+      google.script.run
+        .withSuccessHandler(function(data) {
+          const kategoriRows = Object.keys(data.byKategori)
+            .map(k => `<tr><td>${k}</td><td>${data.byKategori[k]}</td></tr>`).join('');
+          const topMitraRows = data.topMitra.slice(0, 10)
+            .map(m => `<tr>
+              <td style="display:flex;align-items:center;gap:8px;">
+                <div class="avatar" style="width:28px;height:28px;border-radius:8px;font-size:11px;">${initials(m.nama)}</div>
+                ${m.nama}
+              </td>
+              <td>${m.totalHari} hari</td>
+            </tr>`).join('');
+
+          el.innerHTML = `
+            <div class="period-toggle">
+              <button class="${periode === 'weekly' ? 'on' : 'off'}" onclick="loadLaporan('weekly')">Mingguan</button>
+              <button class="${periode === 'monthly' ? 'on' : 'off'}" onclick="loadLaporan('monthly')">Bulanan</button>
+            </div>
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="num">${data.totalPengajuan}</div>
+                <div class="label">Total izin disetujui (${periode === 'weekly' ? '7 hari terakhir' : '30 hari terakhir'})</div>
+              </div>
+            </div>
+            <div class="card" style="margin-top:16px;">
+              <b style="font-family:'Plus Jakarta Sans',sans-serif;">Breakdown per Kategori</b>
+              <table><tr><th>Kategori</th><th>Jumlah</th></tr>${kategoriRows || '<tr><td colspan=2 class="empty">Belum ada data</td></tr>'}</table>
+            </div>
+            <div class="card">
+              <b style="font-family:'Plus Jakarta Sans',sans-serif;">Mitra dengan Izin Terbanyak</b>
+              <table><tr><th>Nama</th><th>Total Hari Izin</th></tr>${topMitraRows || '<tr><td colspan=2 class="empty">Belum ada data</td></tr>'}</table>
+            </div>
+          `;
+        })
+        .withFailureHandler(function(err) { el.innerHTML = '<div class="card empty">' + err.message + '</div>'; })
+        .getLaporan(TOKEN, periode);
+    }
+  </script>
+</body>
+</html>
