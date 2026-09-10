@@ -84,7 +84,8 @@ const API_ACTIONS_ = {
   hapusMitraPin: hapusMitraPin,
   getGajiList: getGajiList,
   tambahGaji: tambahGaji,
-  hapusGaji: hapusGaji
+  hapusGaji: hapusGaji,
+  importGajiBulk: importGajiBulk
 };
 
 function doPost(e) {
@@ -1144,6 +1145,82 @@ function hapusGaji(token, id) {
     }
   }
   return { success: false, message: 'Data gaji tidak ditemukan.' };
+}
+
+/**
+ * Import massal dari CSV yang di-upload di panel Admin (menu Gaji Mitra).
+ * rows = array data gaji (shape sama kayak tambahGaji), sudah di-parse
+ * jadi objek di sisi client. Sama kayak tambahGaji, ini UPSERT per
+ * (nama + periode): kalau kombinasi itu udah ada -- baik di sheet
+ * (data lama) maupun di baris lain pada file CSV yang sama -- baris
+ * terakhir yang menang (di-update), bukan jadi baris duplikat baru.
+ * Baris yang gagal validasi di-skip, baris lain yang valid tetap kesimpen.
+ */
+function importGajiBulk(token, rows) {
+  const username = verifyToken_(token);
+  if (!Array.isArray(rows) || !rows.length) {
+    return { success: false, message: 'Tidak ada data untuk diimport.' };
+  }
+
+  const sheet = getOrCreateGajiSheet_();
+  const values = sheet.getDataRange().getValues();
+
+  // key "nama_lower|periode" -> nomor baris sheet (1-based, buat setValues langsung)
+  const existingRowIndex = {};
+  for (let i = 1; i < values.length; i++) {
+    const key = String(values[i][1]).trim().toLowerCase() + '|' + normalizePeriode_(values[i][2]);
+    existingRowIndex[key] = i + 1;
+  }
+
+  const toAppend = [];
+  const errors = [];
+  let updated = 0;
+  const batchKeyToAppendIdx = {}; // key -> index di toAppend, buat handle duplikat DALAM file yang sama
+
+  rows.forEach(function(data, idx) {
+    const rowNum = idx + 1;
+    const err = validateGajiData_(data);
+    if (err) {
+      errors.push({ row: rowNum, nama: data.nama || '(kosong)', message: err });
+      return;
+    }
+
+    const gajiTotal = hitungGajiTotal_(data.gajiPokok, data.pinalti, data.kompensasi, data.bonus);
+    const key = String(data.nama).trim().toLowerCase() + '|' + data.periode;
+    const rowValues = [
+      Number(data.durasiKerja) || 0, Number(data.gajiPokok) || 0, Number(data.pinalti) || 0,
+      Number(data.kompensasi) || 0, Number(data.bonus) || 0, gajiTotal, username
+    ];
+
+    if (existingRowIndex[key]) {
+      // udah ada di sheet -> update langsung
+      sheet.getRange(existingRowIndex[key], 4, 1, 7).setValues([rowValues]);
+      sheet.getRange(existingRowIndex[key], 11).setValue(new Date());
+      updated++;
+    } else if (batchKeyToAppendIdx[key] !== undefined) {
+      // duplikat di dalam file yang sama -> timpa baris sebelumnya di batch, jangan dobel
+      toAppend[batchKeyToAppendIdx[key]] = [
+        toAppend[batchKeyToAppendIdx[key]][0], String(data.nama).trim(), data.periode
+      ].concat(rowValues);
+    } else {
+      batchKeyToAppendIdx[key] = toAppend.length;
+      toAppend.push([generateGajiId_(), String(data.nama).trim(), data.periode].concat(rowValues, [new Date()]));
+    }
+  });
+
+  if (toAppend.length) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, toAppend.length, 11).setValues(toAppend);
+  }
+
+  const added = toAppend.length;
+  return {
+    success: true,
+    added: added,
+    updated: updated,
+    failed: errors,
+    message: added + ' baris baru ditambahkan, ' + updated + ' baris diupdate' +
+      (errors.length ? ', ' + errors.length + ' baris gagal (lihat detail di bawah).' : '.')
+  };
 }
 
 /**
