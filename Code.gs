@@ -1,6 +1,6 @@
 /**
  * =========================================================
- *  DISPATCHER SEJASA
+ *  MITRA SEJASA HOME TEAM
  *  Backend Google Apps Script
  * =========================================================
  *  Struktur Google Sheet yang dibutuhkan (buat manual sekali):
@@ -41,7 +41,7 @@ const SESSION_DURATION_SEC = 60 * 60 * 4; // token admin valid 4 jam
 function doGet(e) {
   const page = e && e.parameter && e.parameter.page === 'admin' ? 'Admin' : 'Index';
   return HtmlService.createHtmlOutputFromFile(page)
-    .setTitle(page === 'Admin' ? 'Dispatcher Sejasa - Admin' : 'Dispatcher Sejasa - Form Pengajuan Izin')
+    .setTitle(page === 'Admin' ? 'Mitra Sejasa Home Team - Admin' : 'Mitra Sejasa Home Team - Form Pengajuan Izin')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -1053,6 +1053,85 @@ function getOrCreateGajiSheet_() {
   const maxRows = sheet.getMaxRows();
   if (maxRows > 1) sheet.getRange(2, 3, maxRows - 1, 1).setNumberFormat('@');
   return sheet;
+}
+
+/**
+ * PERBAIKAN SATU KALI (migrasi struktur sheet "Gaji").
+ *
+ * Jalanin fungsi ini SEKALI SAJA langsung dari editor Apps Script (pilih
+ * "perbaikiStrukturSheetGaji" di dropdown function sebelah tombol Run,
+ * lalu klik Run) -- BUKAN dipanggil dari admin panel.
+ *
+ * Kenapa perlu: tab "Gaji" di spreadsheet ini dibuat manual dulu dengan
+ * cuma 7 kolom (Nama Mitra, Periode, Durasi Kerja, Gaji Pokok, Pinalti,
+ * Kompensasi, Bonus) -- gak ada kolom "ID" di depan, dan gak ada kolom
+ * "Gaji Total" / "Diinput Oleh" / "Tanggal Diinput" di belakang. Padahal
+ * seluruh kode (mapGajiRow_, tambahGaji, importGajiBulk, dst) asumsi
+ * urutan 11 kolom dengan "ID" di kolom A. Makanya semua data kebaca
+ * geser 1 kolom di admin panel (Nama Mitra ketuker jadi nampil di posisi
+ * Periode, dst) -- padahal DATA ASLINYA gak rusak, cuma strukturnya beda.
+ *
+ * Fungsi ini AMAN: nilai Nama/Periode/Durasi/Gaji Pokok/Pinalti/
+ * Kompensasi/Bonus yang udah ada sama sekali gak diubah/dihapus, cuma
+ * disisipin kolom ID baru di depan (diisi ID otomatis per baris) dan
+ * ditambah kolom Gaji Total (dihitung ulang dari data yang ada), Diinput
+ * Oleh, dan Tanggal Diinput di belakang. Kalau struktur udah bener
+ * (kolom A udah "ID"), fungsi ini gak ngapa-ngapain lagi (aman dijalanin
+ * berkali-kali / gak sengaja kepencet lagi).
+ */
+function perbaikiStrukturSheetGaji() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_GAJI);
+  if (!sheet) {
+    Logger.log('Sheet "Gaji" tidak ditemukan -- tidak ada yang perlu diperbaiki.');
+    return;
+  }
+
+  const firstHeader = sheet.getRange(1, 1).getValue();
+  if (firstHeader === 'ID') {
+    Logger.log('Struktur sheet Gaji sudah benar (kolom A = "ID"). Tidak ada perubahan.');
+    return;
+  }
+  if (firstHeader !== 'Nama Mitra') {
+    Logger.log('Header kolom A = "' + firstHeader + '", bukan "Nama Mitra" ataupun "ID". ' +
+      'Perbaikan DIBATALKAN demi keamanan -- cek manual struktur sheet-nya dulu sebelum jalanin ulang.');
+    return;
+  }
+
+  const lastRow = sheet.getLastRow();
+
+  // 1. Sisipkan kolom ID di paling kiri, isi tiap baris data dengan ID baru.
+  sheet.insertColumnBefore(1);
+  sheet.getRange(1, 1).setValue('ID');
+  if (lastRow > 1) {
+    const ids = [];
+    for (let i = 2; i <= lastRow; i++) ids.push([generateGajiId_()]);
+    sheet.getRange(2, 1, ids.length, 1).setValues(ids);
+  }
+
+  // Setelah disisipkan, kolom lama (Nama Mitra..Bonus) yang tadinya A..G sekarang jadi B..H.
+  const afterInsertLastCol = sheet.getLastColumn();
+
+  // 2. Tambah kolom Gaji Total, Diinput Oleh, Tanggal Diinput di ujung kanan.
+  sheet.getRange(1, afterInsertLastCol + 1).setValue('Gaji Total');
+  sheet.getRange(1, afterInsertLastCol + 2).setValue('Diinput Oleh');
+  sheet.getRange(1, afterInsertLastCol + 3).setValue('Tanggal Diinput');
+
+  if (lastRow > 1) {
+    // Kolom B..H sekarang = Nama, Periode, Durasi, Gaji Pokok, Pinalti, Kompensasi, Bonus
+    const dataRange = sheet.getRange(2, 2, lastRow - 1, 7).getValues();
+    const newCols = dataRange.map(function(r) {
+      const gajiPokok = r[3], pinalti = r[4], kompensasi = r[5], bonus = r[6];
+      return [hitungGajiTotal_(gajiPokok, pinalti, kompensasi, bonus), 'system (migrasi)', new Date()];
+    });
+    sheet.getRange(2, afterInsertLastCol + 1, newCols.length, 3).setValues(newCols);
+
+    // Paksa kolom Periode (sekarang kolom C) tetap Plain Text.
+    sheet.getRange(2, 3, lastRow - 1, 1).setNumberFormat('@');
+  }
+
+  Logger.log('Selesai! ' + (lastRow - 1) + ' baris data di sheet "Gaji" berhasil diperbaiki ' +
+    '(ID digenerate, Gaji Total dihitung ulang). Refresh admin panel untuk lihat hasilnya.');
 }
 
 function generateGajiId_() {
