@@ -85,7 +85,11 @@ const API_ACTIONS_ = {
   getGajiList: getGajiList,
   tambahGaji: tambahGaji,
   hapusGaji: hapusGaji,
-  importGajiBulk: importGajiBulk
+  importGajiBulk: importGajiBulk,
+  getMitraBaruList: getMitraBaruList,
+  tambahMitraBaru: tambahMitraBaru,
+  hapusMitraBaru: hapusMitraBaru,
+  prosesOnboardingMitraBaru: prosesOnboardingMitraBaru
 };
 
 function doPost(e) {
@@ -471,7 +475,7 @@ function adminLogin(username, password) {
   const validPass = props.getProperty('ADMIN_PASSWORD');
 
   if (!validUser || !validPass) {
-    return { success: false, message: 'Admin belum di-setup. Jalankan setupAdmin() dulu di editor.' };
+    return { success: false, message: 'Admin belum di-setup. Jalankan fungsi setupAdmin() terlebih dahulu di editor.' };
   }
   if (username === validUser && password === validPass) {
     const token = Utilities.getUuid();
@@ -557,7 +561,7 @@ function getLaporan(token, periode, customFrom, customTo) {
     cutoffStart.setDate(now.getDate() - 7);
   } else if (periode === 'custom') {
     if (!customFrom || !customTo) {
-      return { success: false, message: 'Pilih tanggal Dari dan Sampai dulu.' };
+      return { success: false, message: 'Pilih tanggal Dari dan Sampai terlebih dahulu.' };
     }
     cutoffStart = new Date(customFrom);
     cutoffEnd = new Date(customTo);
@@ -609,7 +613,7 @@ function hapusIzin(token, id) {
   for (let i = 1; i < values.length; i++) {
     if (values[i][0] === id) {
       if (values[i][9] === 'Pending') {
-        return { success: false, message: 'Pengajuan ini masih Pending, proses dulu (approve/reject) sebelum dihapus.' };
+        return { success: false, message: 'Pengajuan ini masih Pending, proses terlebih dahulu (approve/reject) sebelum dihapus.' };
       }
       sheet.deleteRow(i + 1);
       return { success: true, message: 'Riwayat izin berhasil dihapus.' };
@@ -651,6 +655,8 @@ function getRingkasan(token) {
     kategoriMitraBreakdown[m.kategori] = (kategoriMitraBreakdown[m.kategori] || 0) + 1;
   });
 
+  const mitraBaruMenunggu = getMitraBaruListRows_().filter(m => m.status === 'Menunggu Dihubungi').length;
+
   return {
     success: true,
     totalMitra: mitraList.length,
@@ -659,6 +665,7 @@ function getRingkasan(token) {
     pendingCount,
     approvedBulanIni,
     rejectedBulanIni,
+    mitraBaruMenunggu,
     recentActivity
   };
 }
@@ -1004,7 +1011,7 @@ function hapusMitraPin(token, nama) {
   for (let i = 1; i < values.length; i++) {
     if (String(values[i][0]).trim() === String(nama).trim()) {
       sheet.deleteRow(i + 1);
-      return { success: true, message: 'PIN "' + nama + '" berhasil dihapus. Mitra ini gak akan bisa submit izin/cek gaji sampai PIN-nya dibuat ulang.' };
+      return { success: true, message: 'PIN "' + nama + '" berhasil dihapus. Mitra ini tidak akan bisa mengajukan izin atau memeriksa gaji sampai PIN-nya dibuat ulang.' };
     }
   }
   return { success: false, message: 'Mitra tidak ditemukan.' };
@@ -1012,18 +1019,32 @@ function hapusMitraPin(token, nama) {
 
 // ------------------- GAJI MITRA -------------------
 //
-// Sheet "Gaji" -- satu baris per mitra per periode (bulan). Admin input
-// manual dari panel Admin; mitra cek lewat form (nama + PIN) di index.html.
+// Sheet "Gaji" -- satu baris per mitra per periode gajian. Periode di
+// Sejasa Home Team BUKAN bulan kalender penuh, tapi 2 periode per bulan:
+//   Periode 1: tanggal 11 - 25 bulan itu
+//   Periode 2: tanggal 26 bulan itu - tanggal 10 bulan berikutnya
+// Format penyimpanan: "YYYY-MM-P1" / "YYYY-MM-P2", di mana YYYY-MM
+// adalah bulan TEMPAT PERIODE ITU MULAI (jadi Periode 2 yang mulai
+// 26 September disimpan sebagai "2026-09-P2", walau berakhirnya di
+// bulan Oktober). Admin input manual dari panel Admin; mitra cek
+// lewat form (nama + PIN) di index.html.
 
 const SHEET_GAJI = 'Gaji';
 const BULAN_ID_ = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
 function periodeLabel_(periode) {
-  // periode format: "YYYY-MM"
-  const parts = String(periode || '').split('-');
-  const y = parts[0], m = parseInt(parts[1], 10);
-  if (!y || !m || m < 1 || m > 12) return periode;
-  return BULAN_ID_[m - 1] + ' ' + y;
+  // periode format: "YYYY-MM-P1" atau "YYYY-MM-P2"
+  const m = /^(\d{4})-(\d{2})-P([12])$/.exec(String(periode || ''));
+  if (!m) return periode;
+  const year = parseInt(m[1], 10), month = parseInt(m[2], 10), pnum = m[3];
+  if (month < 1 || month > 12) return periode;
+
+  if (pnum === '1') {
+    return 'Periode 1 (11-25 ' + BULAN_ID_[month - 1] + ' ' + year + ')';
+  }
+  let nextMonth = month + 1, nextYear = year;
+  if (nextMonth > 12) { nextMonth = 1; nextYear += 1; }
+  return 'Periode 2 (26 ' + BULAN_ID_[month - 1] + ' - 10 ' + BULAN_ID_[nextMonth - 1] + ' ' + nextYear + ')';
 }
 
 /**
@@ -1145,7 +1166,7 @@ function hitungGajiTotal_(gajiPokok, pinalti, kompensasi, bonus) {
 function validateGajiData_(data) {
   if (!data) return 'Data gaji kosong.';
   if (!String(data.nama || '').trim()) return 'Nama Mitra wajib diisi.';
-  if (!/^\d{4}-\d{2}$/.test(String(data.periode || ''))) return 'Periode wajib diisi (format bulan-tahun).';
+  if (!/^\d{4}-\d{2}-P[12]$/.test(String(data.periode || ''))) return 'Periode wajib diisi (format: tahun-bulan-P1 atau P2, cth 2026-09-P1).';
   const numFields = ['durasiKerja', 'gajiPokok', 'pinalti', 'kompensasi', 'bonus'];
   for (const f of numFields) {
     if (data[f] !== undefined && data[f] !== '' && isNaN(Number(data[f]))) return 'Nilai "' + f + '" harus berupa angka.';
@@ -1335,4 +1356,134 @@ function getGajiTerbaru(nama, pin) {
     bonus: latest.bonus,
     gajiTotal: latest.gajiTotal
   };
+}
+
+// ------------------- MITRA BARU (pipeline onboarding) -------------------
+//
+// Tempat nyimpen calon mitra baru yang masih perlu dihubungi admin buat
+// dijelasin cara pakai aplikasi, dll. Begitu admin klik "Tandai Selesai
+// & Onboard", datanya OTOMATIS dipindah jadi Data Mitra + PIN Mitra
+// (pakai ulang tambahDataMitra & tambahMitraPin yang udah ada, biar
+// validasinya konsisten & gak dobel logic).
+
+const SHEET_MITRA_BARU = 'Mitra Baru';
+const MITRA_BARU_HEADERS = [
+  'ID', 'Nama', 'Telpon', 'Email', 'Password', 'Kategori', 'Kota', 'Kecamatan',
+  'Hari Libur', 'Gender', 'PIN', 'Status', 'Tanggal Ditambahkan', 'Tanggal Diproses', 'Diproses Oleh'
+];
+
+function getOrCreateMitraBaruSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_MITRA_BARU);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_MITRA_BARU);
+    sheet.appendRow(MITRA_BARU_HEADERS);
+  }
+  return sheet;
+}
+
+function generateMitraBaruId_() {
+  return Utilities.formatString('MB-%s', Utilities.getUuid().split('-')[0].toUpperCase());
+}
+
+function mapMitraBaruRow_(r) {
+  const splitField_ = (v) => v ? String(v).split(',').map(s => s.trim()).filter(Boolean) : [];
+  return {
+    id: r[0], nama: r[1], telpon: r[2], email: r[3], password: r[4], kategori: r[5],
+    kota: splitField_(r[6]), kecamatan: splitField_(r[7]), hariLibur: splitField_(r[8]),
+    gender: r[9], pin: String(r[10] || ''), status: r[11],
+    tanggalDitambahkan: r[12], tanggalDiproses: r[13], diprosesOleh: r[14]
+  };
+}
+
+function getMitraBaruListRows_() {
+  const sheet = getOrCreateMitraBaruSheet_();
+  const values = sheet.getDataRange().getValues();
+  const list = [];
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0]) list.push(mapMitraBaruRow_(values[i]));
+  }
+  // yang masih "Menunggu Dihubungi" duluan, baru yang "Selesai" (terbaru duluan)
+  list.sort((a, b) => {
+    if (a.status !== b.status) return a.status === 'Menunggu Dihubungi' ? -1 : 1;
+    return new Date(b.tanggalDitambahkan) - new Date(a.tanggalDitambahkan);
+  });
+  return list;
+}
+
+function getMitraBaruList(token) {
+  verifyToken_(token);
+  return getMitraBaruListRows_();
+}
+
+function tambahMitraBaru(token, data) {
+  verifyToken_(token);
+  const err = validateDataMitra_(data);
+  if (err) return { success: false, message: err };
+  if (!validatePin_(data.pin)) return { success: false, message: 'PIN harus 4 digit angka.' };
+
+  const sheet = getOrCreateMitraBaruSheet_();
+  const id = generateMitraBaruId_();
+  sheet.appendRow([
+    id, String(data.nama).trim(), String(data.telpon).trim(), String(data.email).trim(), String(data.password),
+    data.kategori, (data.kota || []).join(', '), (data.kecamatan || []).join(', '), (data.hariLibur || []).join(', '),
+    data.gender, String(data.pin).trim(), 'Menunggu Dihubungi', new Date(), '', ''
+  ]);
+  return { success: true, message: '"' + data.nama + '" berhasil ditambahkan ke daftar Mitra Baru.', id: id };
+}
+
+function hapusMitraBaru(token, id) {
+  verifyToken_(token);
+  const sheet = getOrCreateMitraBaruSheet_();
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return { success: true, message: 'Data mitra baru berhasil dihapus.' };
+    }
+  }
+  return { success: false, message: 'Data tidak ditemukan.' };
+}
+
+/**
+ * Tombol "Tandai Selesai & Onboard". Pakai ulang tambahDataMitra dan
+ * tambahMitraPin (SAMA PERSIS validasi & cara nyimpennya kayak nambah
+ * manual dari tab Data Mitra / PIN Mitra), baru abis dua-duanya sukses,
+ * baris Mitra Baru ini ditandai Selesai.
+ */
+function prosesOnboardingMitraBaru(token, id) {
+  const username = verifyToken_(token);
+  const sheet = getOrCreateMitraBaruSheet_();
+  const values = sheet.getDataRange().getValues();
+  let rowIndex = -1, record = null;
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === id) { rowIndex = i + 1; record = mapMitraBaruRow_(values[i]); break; }
+  }
+  if (!record) return { success: false, message: 'Data mitra baru tidak ditemukan.' };
+  if (record.status === 'Selesai') return { success: false, message: 'Mitra ini sudah diproses sebelumnya.' };
+
+  const dataMitraResult = tambahDataMitra(token, {
+    nama: record.nama, telpon: record.telpon, email: record.email, password: record.password,
+    kategori: record.kategori, kota: record.kota, kecamatan: record.kecamatan,
+    hariLibur: record.hariLibur, gender: record.gender
+  });
+  if (!dataMitraResult.success) {
+    return { success: false, message: 'Gagal membuat profil Data Mitra: ' + dataMitraResult.message };
+  }
+
+  const pinResult = tambahMitraPin(token, record.nama, record.pin);
+  if (!pinResult.success) {
+    return {
+      success: false,
+      message: 'Profil Data Mitra "' + record.nama + '" sudah berhasil dibuat, TAPI PIN gagal disimpan: ' +
+        pinResult.message + ' Profil Data Mitra sudah tersimpan, silakan periksa dan lengkapi secara manual lewat tab PIN Mitra.'
+    };
+  }
+
+  sheet.getRange(rowIndex, 12).setValue('Selesai');
+  sheet.getRange(rowIndex, 14).setValue(new Date());
+  sheet.getRange(rowIndex, 15).setValue(username);
+
+  return { success: true, message: '"' + record.nama + '" berhasil di-onboard! Otomatis masuk ke Data Mitra & PIN Mitra.' };
 }
