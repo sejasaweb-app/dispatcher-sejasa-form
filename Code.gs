@@ -1028,9 +1028,21 @@ function hapusMitraPin(token, nama) {
 // 26 September disimpan sebagai "2026-09-P2", walau berakhirnya di
 // bulan Oktober). Admin input manual dari panel Admin; mitra cek
 // lewat form (nama + PIN) di index.html.
+//
+// GAJI MASSAGE: selain kolom A..K biasa, ada 4 kolom tambahan di ujung
+// kanan (L..O): Jam Layanan Utama, Jam Layanan Tambahan, Tarif Utama,
+// Tarif Tambahan. Kosong untuk mitra Cleaning / data lama. Kolomnya
+// dibuat otomatis oleh getOrCreateGajiSheet_().
 
 const SHEET_GAJI = 'Gaji';
 const BULAN_ID_ = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+// Tarif gaji Massage per jam. Tarif ikut disimpan per baris di sheet, jadi
+// kalau angka ini diubah nanti, data gaji lama TIDAK ikut berubah.
+// (Harus sama dengan MASSAGE_RATE_* di admin.html.)
+const GAJI_TARIF_UTAMA = 50000;
+const GAJI_TARIF_TAMBAHAN = 35000;
+const GAJI_TOTAL_KOLOM_ = 15; // A..O
 
 function periodeLabel_(periode) {
   // periode format: "YYYY-MM-P1" atau "YYYY-MM-P2"
@@ -1068,6 +1080,14 @@ function getOrCreateGajiSheet_() {
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_GAJI);
     sheet.appendRow(['ID', 'Nama Mitra', 'Periode', 'Durasi Kerja (Jam)', 'Gaji Pokok', 'Pinalti', 'Kompensasi', 'Bonus', 'Gaji Total', 'Diinput Oleh', 'Tanggal Diinput']);
+  }
+  // Kolom tambahan khusus Massage (L..O). Dibuat otomatis kalau belum ada;
+  // data lama (Cleaning) dibiarkan kosong di kolom ini.
+  if (sheet.getMaxColumns() < GAJI_TOTAL_KOLOM_) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), GAJI_TOTAL_KOLOM_ - sheet.getMaxColumns());
+  }
+  if (!sheet.getRange(1, 12).getValue()) {
+    sheet.getRange(1, 12, 1, 4).setValues([['Jam Layanan Utama', 'Jam Layanan Tambahan', 'Tarif Utama', 'Tarif Tambahan']]);
   }
   // Paksa kolom Periode (C) tetap format Plain Text biar "2026-09" gak
   // ke-auto-convert jadi Date lagi di masa depan.
@@ -1163,6 +1183,10 @@ function hitungGajiTotal_(gajiPokok, pinalti, kompensasi, bonus) {
   return Number(gajiPokok || 0) - Number(pinalti || 0) + Number(kompensasi || 0) + Number(bonus || 0);
 }
 
+function isBlank_(v) {
+  return v === '' || v === null || v === undefined;
+}
+
 function validateGajiData_(data) {
   if (!data) return 'Data gaji kosong.';
   if (!String(data.nama || '').trim()) return 'Nama Mitra wajib diisi.';
@@ -1172,7 +1196,44 @@ function validateGajiData_(data) {
     if (data[f] !== undefined && data[f] !== '' && isNaN(Number(data[f]))) return 'Nilai "' + f + '" harus berupa angka.';
     if (Number(data[f]) < 0) return 'Nilai tidak boleh negatif.';
   }
+  if (data.tipe === 'massage') {
+    const massageFields = ['jamUtama', 'jamTambahan'];
+    for (const f of massageFields) {
+      if (data[f] !== undefined && data[f] !== '' && isNaN(Number(data[f]))) return 'Nilai "' + f + '" harus berupa angka.';
+      if (Number(data[f]) < 0) return 'Nilai tidak boleh negatif.';
+    }
+  }
   return null;
+}
+
+/**
+ * Siapkan nilai yang mau ditulis ke sheet. Kalau tipe = 'massage', durasi
+ * dan gaji pokok DIHITUNG ULANG di server dari jam layanan utama/tambahan
+ * (bukan percaya angka dari browser). Selain itu (Cleaning / manual /
+ * import CSV), kolom khusus Massage dikosongkan.
+ */
+function buildGajiValues_(data, username) {
+  let durasi, gajiPokok, extras;
+  if (data.tipe === 'massage') {
+    const jamUtama = Number(data.jamUtama) || 0;
+    const jamTambahan = Number(data.jamTambahan) || 0;
+    durasi = jamUtama + jamTambahan;
+    gajiPokok = jamUtama * GAJI_TARIF_UTAMA + jamTambahan * GAJI_TARIF_TAMBAHAN;
+    extras = [jamUtama, jamTambahan, GAJI_TARIF_UTAMA, GAJI_TARIF_TAMBAHAN];
+  } else {
+    durasi = Number(data.durasiKerja) || 0;
+    gajiPokok = Number(data.gajiPokok) || 0;
+    extras = ['', '', '', ''];
+  }
+  const pinalti = Number(data.pinalti) || 0;
+  const kompensasi = Number(data.kompensasi) || 0;
+  const bonus = Number(data.bonus) || 0;
+  const gajiTotal = hitungGajiTotal_(gajiPokok, pinalti, kompensasi, bonus);
+  return {
+    core: [durasi, gajiPokok, pinalti, kompensasi, bonus, gajiTotal, username], // kolom D..J
+    extras: extras,                                                              // kolom L..O
+    gajiTotal: gajiTotal
+  };
 }
 
 function mapGajiRow_(r) {
@@ -1180,7 +1241,12 @@ function mapGajiRow_(r) {
   return {
     id: r[0], nama: r[1], periode: periode, periodeLabel: periodeLabel_(periode),
     durasiKerja: r[3], gajiPokok: r[4], pinalti: r[5], kompensasi: r[6], bonus: r[7],
-    gajiTotal: r[8], diinputOleh: r[9], tanggalDiinput: r[10]
+    gajiTotal: r[8], diinputOleh: r[9], tanggalDiinput: r[10],
+    jamUtama: isBlank_(r[11]) ? '' : Number(r[11]),
+    jamTambahan: isBlank_(r[12]) ? '' : Number(r[12]),
+    tarifUtama: isBlank_(r[13]) ? '' : Number(r[13]),
+    tarifTambahan: isBlank_(r[14]) ? '' : Number(r[14]),
+    isMassage: !(isBlank_(r[11]) && isBlank_(r[12]))
   };
 }
 
@@ -1210,27 +1276,24 @@ function tambahGaji(token, data) {
   const err = validateGajiData_(data);
   if (err) return { success: false, message: err };
 
-  const gajiTotal = hitungGajiTotal_(data.gajiPokok, data.pinalti, data.kompensasi, data.bonus);
+  const built = buildGajiValues_(data, username);
+  const gajiTotal = built.gajiTotal;
   const sheet = getOrCreateGajiSheet_();
   const values = sheet.getDataRange().getValues();
 
   for (let i = 1; i < values.length; i++) {
     if (String(values[i][1]).trim().toLowerCase() === String(data.nama).trim().toLowerCase() && normalizePeriode_(values[i][2]) === data.periode) {
-      sheet.getRange(i + 1, 4, 1, 7).setValues([[
-        Number(data.durasiKerja) || 0, Number(data.gajiPokok) || 0, Number(data.pinalti) || 0,
-        Number(data.kompensasi) || 0, Number(data.bonus) || 0, gajiTotal, username
-      ]]);
+      sheet.getRange(i + 1, 4, 1, 7).setValues([built.core]);
       sheet.getRange(i + 1, 11).setValue(new Date());
+      sheet.getRange(i + 1, 12, 1, 4).setValues([built.extras]);
       return { success: true, message: 'Gaji ' + data.nama + ' periode ' + periodeLabel_(data.periode) + ' berhasil diperbarui.', gajiTotal: gajiTotal };
     }
   }
 
   const id = generateGajiId_();
-  sheet.appendRow([
-    id, String(data.nama).trim(), data.periode,
-    Number(data.durasiKerja) || 0, Number(data.gajiPokok) || 0, Number(data.pinalti) || 0,
-    Number(data.kompensasi) || 0, Number(data.bonus) || 0, gajiTotal, username, new Date()
-  ]);
+  sheet.appendRow(
+    [id, String(data.nama).trim(), data.periode].concat(built.core, [new Date()], built.extras)
+  );
   return { success: true, message: 'Gaji ' + data.nama + ' periode ' + periodeLabel_(data.periode) + ' berhasil disimpan.', gajiTotal: gajiTotal, id: id };
 }
 
@@ -1255,6 +1318,7 @@ function hapusGaji(token, id) {
  * (data lama) maupun di baris lain pada file CSV yang sama -- baris
  * terakhir yang menang (di-update), bukan jadi baris duplikat baru.
  * Baris yang gagal validasi di-skip, baris lain yang valid tetap kesimpen.
+ * (Import CSV selalu format manual: kolom khusus Massage dikosongkan.)
  */
 function importGajiBulk(token, rows) {
   const username = verifyToken_(token);
@@ -1285,31 +1349,29 @@ function importGajiBulk(token, rows) {
       return;
     }
 
-    const gajiTotal = hitungGajiTotal_(data.gajiPokok, data.pinalti, data.kompensasi, data.bonus);
+    const built = buildGajiValues_(data, username);
     const key = String(data.nama).trim().toLowerCase() + '|' + data.periode;
-    const rowValues = [
-      Number(data.durasiKerja) || 0, Number(data.gajiPokok) || 0, Number(data.pinalti) || 0,
-      Number(data.kompensasi) || 0, Number(data.bonus) || 0, gajiTotal, username
-    ];
+    const rowValues = built.core;
 
     if (existingRowIndex[key]) {
       // udah ada di sheet -> update langsung
       sheet.getRange(existingRowIndex[key], 4, 1, 7).setValues([rowValues]);
       sheet.getRange(existingRowIndex[key], 11).setValue(new Date());
+      sheet.getRange(existingRowIndex[key], 12, 1, 4).setValues([built.extras]);
       updated++;
     } else if (batchKeyToAppendIdx[key] !== undefined) {
       // duplikat di dalam file yang sama -> timpa baris sebelumnya di batch, jangan dobel
       toAppend[batchKeyToAppendIdx[key]] = [
         toAppend[batchKeyToAppendIdx[key]][0], String(data.nama).trim(), data.periode
-      ].concat(rowValues);
+      ].concat(rowValues, [new Date()], built.extras);
     } else {
       batchKeyToAppendIdx[key] = toAppend.length;
-      toAppend.push([generateGajiId_(), String(data.nama).trim(), data.periode].concat(rowValues, [new Date()]));
+      toAppend.push([generateGajiId_(), String(data.nama).trim(), data.periode].concat(rowValues, [new Date()], built.extras));
     }
   });
 
   if (toAppend.length) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, toAppend.length, 11).setValues(toAppend);
+    sheet.getRange(sheet.getLastRow() + 1, 1, toAppend.length, GAJI_TOTAL_KOLOM_).setValues(toAppend);
   }
 
   const added = toAppend.length;
@@ -1325,7 +1387,8 @@ function importGajiBulk(token, rows) {
 
 /**
  * Mitra cek gaji periode TERBARU yang udah diinput admin (nama + PIN,
- * sama kayak pola verifikasi di getRiwayatMitra).
+ * sama kayak pola verifikasi di getRiwayatMitra). Untuk mitra Massage,
+ * ikut dikirim rincian layanan utama & tambahan.
  */
 function getGajiTerbaru(nama, pin) {
   if (!nama || !pin) return { success: false, message: 'Nama dan PIN wajib diisi.' };
@@ -1354,7 +1417,14 @@ function getGajiTerbaru(nama, pin) {
     pinalti: latest.pinalti,
     kompensasi: latest.kompensasi,
     bonus: latest.bonus,
-    gajiTotal: latest.gajiTotal
+    gajiTotal: latest.gajiTotal,
+    isMassage: latest.isMassage,
+    jamUtama: latest.jamUtama,
+    jamTambahan: latest.jamTambahan,
+    tarifUtama: latest.tarifUtama,
+    tarifTambahan: latest.tarifTambahan,
+    upahUtama: latest.isMassage ? Number(latest.jamUtama || 0) * Number(latest.tarifUtama || 0) : 0,
+    upahTambahan: latest.isMassage ? Number(latest.jamTambahan || 0) * Number(latest.tarifTambahan || 0) : 0
   };
 }
 
